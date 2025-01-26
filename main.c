@@ -3,12 +3,20 @@
 #include "funciones.h"
 
 int main() {
+    int opc=0;
     /*struct ZonasQuito zonas[ZONAS];
     float factoresClimaticos[3] = {0.5, 0.3, 0.2};*/
 
     inicializarZonas();
     exportarReporte();
     //calcularDiasTranscurridos();
+    do
+    {
+        opc = menuIngresarDatosActuales();
+    } while (opc != 7);
+    
+    
+    
 
     /*int opcion;
     while (1) {

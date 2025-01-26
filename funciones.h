@@ -33,6 +33,7 @@ struct ZonasQuito{
     struct Contaminantes contaminantesRegistrados[DIAS_ANIO];
     struct Contaminantes contaminantesPredecidos[DIAS_ANIO];
     struct LimitesContaminantes limitesContaminantes;
+    int autoRegistro[DIAS_ANIO];
     //float contaminantes[DIAS_MES];
     //float actual;
     //float prediccion;
@@ -46,6 +47,10 @@ void SaveDatosZona(struct ZonasQuito *zonas, int nuevosDatos);
 void inicializarZonas();
 int calcularDiasTranscurridos();
 void exportarReporte();
+void ingresarDatosActuales(int indiceZona);
+int menuIngresarDatosActuales();
+
+
 
 int obtenerDiaActual();
 int obtenerMesActual();

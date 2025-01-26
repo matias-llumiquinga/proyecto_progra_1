@@ -48,13 +48,13 @@ void inicializarZonas()
     }
     else
     {
-        struct ZonasQuito zonas[ZONAS];
+        struct ZonasQuito zonas[ZONAS] = {0};
         int diasTranscurridos = calcularDiasTranscurridos();
 
         for (int i = 0; i < ZONAS; i++)
         {
             strcpy(zonas[i].nombre, nombres[i]);
-            for (int j = 0; j < diasTranscurridos; j++)
+            for (int j = 0; j < diasTranscurridos - 1; j++)
             {
                 zonas[i].factoresClimaticos[j].temperatura = rand() % 40 + 1;
                 zonas[i].factoresClimaticos[j].humedad = rand() % 100 + 1;
@@ -67,6 +67,7 @@ void inicializarZonas()
                 zonas[i].contaminantesPredecidos[j].NO2 = 0.0;
                 zonas[i].contaminantesPredecidos[j].SO2 = 0.0;
                 zonas[i].contaminantesPredecidos[j].CO2 = 0.0;
+                zonas[i].autoRegistro[j] = 1;
             }
             zonas[i].limitesContaminantes.limite_PM25 = 25.0;
             zonas[i].limitesContaminantes.limite_NO2 = 40.0;
@@ -150,16 +151,30 @@ void exportarReporte()
             for (int j = 0; j < diasTranscurridos; j++)
             {
                 mktime(&fecha);
-                fprintf(fileText, "------------------------------------------------------------------\n");
-                fprintf(fileText, "%02d/%02d/%d\n", fecha.tm_mday, fecha.tm_mon + 1, fecha.tm_year);
-                // fprintf(fileText, "Dia:\t%d\n", j + 1);
-                fprintf(fileText, "Temperatura:\t\t%.2f\n", zonas[i].factoresClimaticos[j].temperatura);
-                fprintf(fileText, "Humedad:\t\t\t%.2f\n", zonas[i].factoresClimaticos[j].humedad);
+                fprintf(fileText, "---------------------------%02d/%02d/%d---------------------------\n", fecha.tm_mday, fecha.tm_mon + 1, fecha.tm_year);
+                fprintf(fileText, "Temperatura:\t\t\t%.2f\n", zonas[i].factoresClimaticos[j].temperatura);
+                fprintf(fileText, "Humedad:\t\t\t\t%.2f\n", zonas[i].factoresClimaticos[j].humedad);
                 fprintf(fileText, "Velocidad del viento:\t%.2f\n", zonas[i].factoresClimaticos[j].velocidadViento);
-                fprintf(fileText, "PM2.5:\t%.2f\n", zonas[i].contaminantesRegistrados[j].PM25);
-                fprintf(fileText, "NO2:\t%.2f\n", zonas[i].contaminantesRegistrados[j].NO2);
-                fprintf(fileText, "SO2:\t%.2f\n", zonas[i].contaminantesRegistrados[j].SO2);
-                fprintf(fileText, "CO2:\t%.2f\n", zonas[i].contaminantesRegistrados[j].CO2);
+
+                if (zonas[i].autoRegistro[j] == 1)
+                {
+                    fprintf(fileText, "PM2.5:\t%.2f\n", zonas[i].contaminantesRegistrados[j].PM25);
+                    fprintf(fileText, "NO2:\t%.2f\n", zonas[i].contaminantesRegistrados[j].NO2);
+                    fprintf(fileText, "SO2:\t%.2f\n", zonas[i].contaminantesRegistrados[j].SO2);
+                    fprintf(fileText, "CO2:\t%.2f\n", zonas[i].contaminantesRegistrados[j].CO2);
+                }
+                else
+                {
+                    fprintf(fileText, "PM2.5 actual:\t%.2f\n", zonas[i].contaminantesRegistrados[j].PM25);
+                    fprintf(fileText, "NO2 actual:\t\t%.2f\n", zonas[i].contaminantesRegistrados[j].NO2);
+                    fprintf(fileText, "SO2 actual:\t\t%.2f\n", zonas[i].contaminantesRegistrados[j].SO2);
+                    fprintf(fileText, "CO2 actual:\t\t%.2f\n", zonas[i].contaminantesRegistrados[j].CO2);
+
+                    fprintf(fileText, "PM2.5 predicho en 24h:\t%.2f\n", zonas[i].contaminantesPredecidos[j].PM25);
+                    fprintf(fileText, "NO2 predicho en 24h:\t%.2f\n", zonas[i].contaminantesPredecidos[j].NO2);
+                    fprintf(fileText, "SO2 predicho en 24h:\t%.2f\n", zonas[i].contaminantesPredecidos[j].SO2);
+                    fprintf(fileText, "CO2 predicho en 24h:\t%.2f\n", zonas[i].contaminantesPredecidos[j].CO2);
+                }
 
                 fecha.tm_mday++;
             }
@@ -172,9 +187,136 @@ void exportarReporte()
     printf("-REPORTES GENERADOS-\n");
 }
 
-void ingresarDatosActuales()
+void ingresarDatosActuales(int indiceZona)
 {
+    FILE *fileBinary = fopen(NOMBRE_ARCHIVO_REGISTRO, "rb+");
+    struct ZonasQuito zonas[ZONAS];
+    int diasTranscurridos = calcularDiasTranscurridos();
+    diasTranscurridos = 0;
 
+    if (fileBinary == NULL)
+    {
+        printf("Error al abrir el archivo\n");
+        return;
+    }
+
+    else
+    {
+        fread(zonas, sizeof(struct ZonasQuito), ZONAS, fileBinary);
+
+        if (zonas[indiceZona].autoRegistro[diasTranscurridos] == -1)
+        {
+            printf("Ya se han ingresado datos para la zona %s en la fecha actual.\n", zonas[indiceZona].nombre);
+            return;
+        }
+        else
+        {
+            int posicion = indiceZona * sizeof(struct ZonasQuito);
+            fseek(fileBinary, posicion, SEEK_SET);
+            /*printf("-INGRESE LOS DATOS PARA LA ZONA %s-\n", zonaAModificar.nombre);
+            printf("Temperatura:\t\t");
+            scanf("%f", &zonaAModificar.factoresClimaticos[diasTranscurridos].temperatura);
+            printf("Humedad:\t\t");
+            scanf("%f", &zonaAModificar.factoresClimaticos[diasTranscurridos].humedad);
+            printf("Velocidad del viento:\t");
+            scanf("%f", &zonaAModificar.factoresClimaticos[diasTranscurridos].velocidadViento);
+            printf("PM2.5:\t");
+            scanf("%f", &zonaAModificar.contaminantesRegistrados[diasTranscurridos].PM25);
+            printf("NO2:\t");
+            scanf("%f", &zonaAModificar.contaminantesRegistrados[diasTranscurridos].NO2);
+            printf("SO2:\t");
+            scanf("%f", &zonaAModificar.contaminantesRegistrados[diasTranscurridos].SO2);
+            printf("CO2:\t");
+            scanf("%f", &zonaAModificar.contaminantesRegistrados[diasTranscurridos].CO2);*/
+            strcpy(zonas[indiceZona].nombre, "oliva");
+            zonas[indiceZona].factoresClimaticos[diasTranscurridos].temperatura = 40. + 1;
+            zonas[indiceZona].factoresClimaticos[diasTranscurridos].humedad = 100. + 1;
+            zonas[indiceZona].factoresClimaticos[diasTranscurridos].velocidadViento = 100. + 1;
+            zonas[indiceZona].contaminantesRegistrados[diasTranscurridos].PM25 = 50. + 1;
+            zonas[indiceZona].contaminantesRegistrados[diasTranscurridos].NO2 = 50. + 1;
+            zonas[indiceZona].contaminantesRegistrados[diasTranscurridos].SO2 = 50. + 1;
+            zonas[indiceZona].contaminantesRegistrados[diasTranscurridos].CO2 = 50. + 1;
+            zonas[indiceZona].autoRegistro[diasTranscurridos] = -1;
+
+            SaveDatosZona(&zonas[indiceZona], 1);
+            printf("NOMBRE: %s\n", zonas[0].nombre);
+            printf("NOMBRE: %s\n", zonas[1].nombre);
+            printf("NOMBRE: %s\n", zonas[2].nombre);
+            printf("NOMBRE: %s\n", zonas[3].nombre);
+            printf("NOMBRE: %s\n", zonas[4].nombre);
+        }
+    }
+    fclose(fileBinary);
+}
+
+int menuIngresarDatosActuales()
+{
+    FILE *fileBinary = fopen(NOMBRE_ARCHIVO_REGISTRO, "rb");
+    struct ZonasQuito zonas[ZONAS];
+    struct tm fecha = {0};
+    int diasTranscurridos = calcularDiasTranscurridos();
+    int opc = 0;
+
+    if (fileBinary == NULL)
+    {
+        printf("Error al abrir el archivo\n");
+        return 0;
+    }
+
+    else
+    {
+        fread(zonas, sizeof(struct ZonasQuito), ZONAS, fileBinary);
+
+        printf("--- INGRESAR DATOS ACTUALES ---\n");
+        printf("1. %s\n", zonas[0].nombre);
+        printf("2. %s\n", zonas[1].nombre);
+        printf("3. %s\n", zonas[2].nombre);
+        printf("4. %s\n", zonas[3].nombre);
+        printf("5. %s\n", zonas[4].nombre);
+        printf("6. TODOS\n");
+        printf("7. Salir\n");
+        printf("Seleccione una opcion: ");
+        // scanf("%d", &opc);
+        if (scanf("%d", &opc) != 1)
+        {
+            printf("Entrada no válida. Por favor ingrese un número.\n");
+            opc = 0; // Para forzar la repetición del menú
+            while (getchar() != '\n')
+                ; // Limpiar el buffer
+        }
+
+        switch (opc)
+        {
+        case 1:
+            ingresarDatosActuales(0);
+            break;
+        case 2:
+            ingresarDatosActuales(1);
+            break;
+        case 3:
+            ingresarDatosActuales(2);
+            break;
+        case 4:
+            ingresarDatosActuales(3);
+            break;
+        case 5:
+            ingresarDatosActuales(4);
+            break;
+        case 6:
+            ingresarDatosActuales(0);
+            ingresarDatosActuales(1);
+            ingresarDatosActuales(2);
+            ingresarDatosActuales(3);
+            ingresarDatosActuales(4);
+            break;
+        case 7:
+            printf("Regresando al menu principal...\n");
+            break;
+        default:
+            printf("Opcion no valida.\n");
+        }
+    }
+    return opc;
 }
 
 /*

@@ -4,36 +4,180 @@
 #include <time.h>
 #include "funciones.h"
 
-void inicializarZonas(QuitoZona zonas[])
+void SaveDatosZona(struct ZonasQuito *zonas, int nuevosDatos)
 {
-    const char *nombres[ZONAS] = {"Nayon", "Granados", "Inaquito", "Carcelen", "El Bosque"};
-    for (int i = 0; i < ZONAS; i++)
+    FILE *file = fopen(NOMBRE_ARCHIVO_REGISTRO, "ab+");
+    if (file == NULL)
     {
-        strcpy(zonas[i].nombre, nombres[i]);
-        for (int j = 0; j < DIAS_MES; j++)
-        {
-            zonas[i].contaminantes[j] = rand() % 50 + 1;
-        }
-        zonas[i].actual = 0.0;
-        zonas[i].prediccion = 0.0;
-        zonas[i].limite_PM25 = 25.0;
-        zonas[i].limite_NO2 = 40.0;
-        zonas[i].limite_SO2 = 20.0;
-        zonas[i].limite_CO = 10.0;
+        printf("Error al abrir el archivo\n");
+        return;
     }
-}
+    else
+    {
+        fwrite(zonas, sizeof(struct ZonasQuito), 1, file); // putero de estructura, tamaño de la estructura, cantidad de estructuras, archivo
 
-void mostrarFechaHoraActual()
+        if (nuevosDatos == 1)
+        {
+            printf("Datos guardados con exito\n");
+        }
+    }
+
+    fclose(file);
+}
+void inicializarZonas()
 {
-    time_t t;
-    struct tm *tm;
-    t = time(NULL);
-    tm = localtime(&t);
-    printf("Fecha y hora actual: %02d/%02d/%04d %02d:%02d:%02d\n",
-           tm->tm_mday, tm->tm_mon + 1, tm->tm_year + 1900,
-           tm->tm_hour, tm->tm_min, tm->tm_sec);
+    const char *nombres[ZONAS] = {"NAYON", "GRANADOS", "INAQUITO", "CARCELEN", "EL BOSQUE"};
+
+    FILE *file = fopen(NOMBRE_ARCHIVO_REGISTRO, "rb");
+    if (file == NULL)
+    {
+        printf("El archivo no existe, creandolo...\n");
+        file = fopen(NOMBRE_ARCHIVO_REGISTRO, "wb"); // Abrir en modo escritura binaria
+        if (file == NULL)
+        {
+            printf("Error al crear el archivo\n");
+            return;
+        }
+    }
+    fseek(file, 0, SEEK_END);
+    int length = ftell(file);
+
+    if (length > 0)
+    {
+        return;
+    }
+    else
+    {
+        struct ZonasQuito zonas[ZONAS];
+        int diasTranscurridos = calcularDiasTranscurridos();
+
+        for (int i = 0; i < ZONAS; i++)
+        {
+            strcpy(zonas[i].nombre, nombres[i]);
+            for (int j = 0; j < diasTranscurridos; j++)
+            {
+                zonas[i].factoresClimaticos[j].temperatura = rand() % 40 + 1;
+                zonas[i].factoresClimaticos[j].humedad = rand() % 100 + 1;
+                zonas[i].factoresClimaticos[j].velocidadViento = rand() % 100 + 1;
+                zonas[i].contaminantesRegistrados[j].PM25 = rand() % 50 + 1;
+                zonas[i].contaminantesRegistrados[j].NO2 = rand() % 50 + 1;
+                zonas[i].contaminantesRegistrados[j].SO2 = rand() % 50 + 1;
+                zonas[i].contaminantesRegistrados[j].CO2 = rand() % 50 + 1;
+                zonas[i].contaminantesPredecidos[j].PM25 = 0.0;
+                zonas[i].contaminantesPredecidos[j].NO2 = 0.0;
+                zonas[i].contaminantesPredecidos[j].SO2 = 0.0;
+                zonas[i].contaminantesPredecidos[j].CO2 = 0.0;
+            }
+            zonas[i].limitesContaminantes.limite_PM25 = 25.0;
+            zonas[i].limitesContaminantes.limite_NO2 = 40.0;
+            zonas[i].limitesContaminantes.limite_SO2 = 20.0;
+            zonas[i].limitesContaminantes.limite_CO2 = 10.0;
+
+            SaveDatosZona(&zonas[i], 0);
+        }
+    }
+
+    fclose(file);
+}
+int calcularDiasTranscurridos()
+{
+    int dia = obtenerDiaActual();
+    int mes = obtenerMesActual();
+    int diasPorMes[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    int diasTranscurridos = 0;
+    for (int i = 0; i < mes - 1; i++)
+    {
+        diasTranscurridos += diasPorMes[i];
+    }
+    diasTranscurridos += dia;
+    // printf("Fecha actual: %d/%d\n", dia, mes);
+    return diasTranscurridos;
 }
 
+int obtenerDiaActual()
+{
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    return tm.tm_mday;
+}
+int obtenerMesActual()
+{
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    return tm.tm_mon + 1;
+}
+int obtenerAnioActual()
+{
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    return tm.tm_year + 1900;
+}
+
+void exportarReporte()
+{
+    FILE *fileBinary = fopen(NOMBRE_ARCHIVO_REGISTRO, "rb");
+    struct ZonasQuito zonas[ZONAS];
+    struct tm fecha = {0};
+    int diasTranscurridos = calcularDiasTranscurridos();
+
+    if (fileBinary == NULL)
+    {
+        printf("Error al abrir el archivo\n");
+        return;
+    }
+
+    else
+    {
+        fread(zonas, sizeof(struct ZonasQuito), ZONAS, fileBinary);
+
+        for (int i = 0; i < ZONAS; i++)
+        {
+            char nombreArchivo[50];
+            fecha.tm_year = obtenerAnioActual();
+            fecha.tm_mon = 0;
+            fecha.tm_mday = 1;
+
+            snprintf(nombreArchivo, sizeof(nombreArchivo), "_REPORTE_DE_%s.txt", zonas[i].nombre);
+            FILE *fileText = fopen(nombreArchivo, "w");
+            if (fileText == NULL)
+            {
+                printf("Error al abrir el archivo\n");
+                continue;
+            }
+            fprintf(fileText, "%s : REPORTE DE ZONAS CLIMATICAS Y CONTAMINANTES EN QUITO\n", zonas[i].nombre);
+            fprintf(fileText, "------------------------------------------------------------------\n");
+
+            for (int j = 0; j < diasTranscurridos; j++)
+            {
+                mktime(&fecha);
+                fprintf(fileText, "------------------------------------------------------------------\n");
+                fprintf(fileText, "%02d/%02d/%d\n", fecha.tm_mday, fecha.tm_mon + 1, fecha.tm_year);
+                // fprintf(fileText, "Dia:\t%d\n", j + 1);
+                fprintf(fileText, "Temperatura:\t\t%.2f\n", zonas[i].factoresClimaticos[j].temperatura);
+                fprintf(fileText, "Humedad:\t\t\t%.2f\n", zonas[i].factoresClimaticos[j].humedad);
+                fprintf(fileText, "Velocidad del viento:\t%.2f\n", zonas[i].factoresClimaticos[j].velocidadViento);
+                fprintf(fileText, "PM2.5:\t%.2f\n", zonas[i].contaminantesRegistrados[j].PM25);
+                fprintf(fileText, "NO2:\t%.2f\n", zonas[i].contaminantesRegistrados[j].NO2);
+                fprintf(fileText, "SO2:\t%.2f\n", zonas[i].contaminantesRegistrados[j].SO2);
+                fprintf(fileText, "CO2:\t%.2f\n", zonas[i].contaminantesRegistrados[j].CO2);
+
+                fecha.tm_mday++;
+            }
+
+            fclose(fileText);
+        }
+    }
+    fclose(fileBinary);
+
+    printf("-REPORTES GENERADOS-\n");
+}
+
+void ingresarDatosActuales()
+{
+
+}
+
+/*
 void calcularPromediosHistoricos(QuitoZona *zona)
 {
     float suma = 0.0;
@@ -287,4 +431,4 @@ int buscarZona(QuitoZona zonas[], char nombre[50])
     }
     printf("Zona %s no encontrada.\n", nombre);
     return 0;
-}
+}*/

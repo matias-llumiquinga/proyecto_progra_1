@@ -3,13 +3,14 @@
 #include "funciones.h"
 
 int main() {
-    QuitoZona zonas[ZONAS];
-    float factoresClimaticos[3] = {0.5, 0.3, 0.2};
+    /*struct ZonasQuito zonas[ZONAS];
+    float factoresClimaticos[3] = {0.5, 0.3, 0.2};*/
 
-    inicializarZonas(zonas);
-    mostrarFechaHoraActual();
+    inicializarZonas();
+    exportarReporte();
+    //calcularDiasTranscurridos();
 
-    int opcion;
+    /*int opcion;
     while (1) {
         printf("\nMenu:\n");
         printf("1. Calcular promedios historicos\n");
@@ -50,7 +51,7 @@ int main() {
             default:
                 printf("Opcion no valida.\n");
         }
-    }
+    }*/
 
     return 0;
 }
